@@ -3,6 +3,7 @@ name = "janett"
 version = "0.1.0"
 description = "Janett — a Greptile-like AI code review bot (local CLI + GitHub App), Ollama by default"
 readme = "README.md"
+license = "MIT"
 requires-python = ">=3.11"
 dependencies = [
     "fastapi>=0.115",

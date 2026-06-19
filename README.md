@@ -1,5 +1,8 @@
 # Janett
 
+[![CI](https://github.com/naamanu/janett/actions/workflows/ci.yml/badge.svg)](https://github.com/naamanu/janett/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
 A Greptile-like AI code review bot. One transport-agnostic review engine, two
 front-ends:
 
@@ -138,3 +141,7 @@ uv run pytest
 - Whole-repo RAG context (pgvector + embeddings, tree-sitter chunking).
 - Redis + worker queue; review persistence; comment dedup across re-pushes.
 - `@janett` re-review commands; PR summary; per-repo `.janett.yml` config.
+
+## License
+
+[MIT](LICENSE)

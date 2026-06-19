@@ -22,6 +22,48 @@ LLM client interface:  OllamaClient (default)  |  OpenAICompatClient (prod/remot
 The core (`src/janett/core`) knows nothing about HTTP or GitHub. It takes a diff
 plus file contents and returns structured `Finding`s. Everything else is plumbing.
 
+See [`docs/architecture.md`](docs/architecture.md) for the full data-flow and
+extension points.
+
+## Documentation
+
+| Doc | What's in it |
+|-----|--------------|
+| [docs/architecture.md](docs/architecture.md) | Engine design, data path, key types, how to add an LLM or VCS backend |
+| [docs/configuration.md](docs/configuration.md) | Every environment variable, with defaults |
+| [docs/github-app.md](docs/github-app.md) | Creating the GitHub App, installing it, local webhook testing, troubleshooting |
+| [docs/deployment.md](docs/deployment.md) | Deploying the API to Railway and the production LLM setup |
+
+## Project layout
+
+```
+src/janett/
+  config.py            # settings (env vars)
+  core/                # the transport-agnostic review engine
+    models.py          #   ReviewRequest, ReviewResult, Finding, FileDiff, Hunk
+    diff.py            #   unified-diff parser
+    prompt.py          #   prompt construction
+    findings.py        #   parse + validate model output (drops out-of-diff findings)
+    orchestrator.py    #   review() — the entry point
+  llm/                 # pluggable LLM clients
+    base.py            #   LLMClient protocol
+    ollama.py          #   default backend
+    openai_compat.py   #   prod / remote backend
+    factory.py         #   build client from config
+  vcs/
+    local.py           # git diff → ReviewRequest
+    github.py          # GitHub App auth, fetch PR diff, post review
+  api/
+    app.py             # FastAPI app + /health
+    routes_review.py   # POST /review
+    routes_github.py   # POST /webhook/github (HMAC verify, ack, enqueue)
+    tasks.py           # background PR review
+  cli/
+    main.py            # `janett review` CLI
+    render.py          # terminal output
+tests/                 # diff parser, findings parser, orchestrator
+```
+
 ## Setup
 
 ```bash

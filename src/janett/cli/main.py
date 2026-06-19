@@ -17,6 +17,7 @@ import typer
 from rich.console import Console
 
 from ..config import get_settings
+from ..core.diff import parse_diff
 from ..core.models import ReviewRequest, ReviewResult
 from ..core.orchestrator import review as run_review
 from ..llm.factory import build_llm_client
@@ -68,11 +69,18 @@ def review(
         console.print("[dim]No changes to review.[/dim]")
         raise typer.Exit(0)
 
+    n_files = len(parse_diff(request.diff))
+    where = f"via {remote}" if remote else f"via {settings.llm_provider}"
+    status = (
+        f"[bold cyan]Janett[/] is reviewing "
+        f"{n_files} changed file(s) {where}…"
+    )
     try:
-        if remote:
-            result = _review_remote(request, remote)
-        else:
-            result = asyncio.run(_review_local(request))
+        with console.status(status, spinner="dots"):
+            if remote:
+                result = _review_remote(request, remote)
+            else:
+                result = asyncio.run(_review_local(request))
     except httpx.HTTPError as exc:
         console.print(f"[red]Request failed:[/red] {exc}")
         raise typer.Exit(2)

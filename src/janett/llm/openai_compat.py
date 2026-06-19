@@ -8,6 +8,8 @@ from __future__ import annotations
 
 import httpx
 
+from ._http import post_json_with_retry
+
 
 class OpenAICompatClient:
     def __init__(
@@ -43,11 +45,10 @@ class OpenAICompatClient:
 
         headers = {"Authorization": f"Bearer {self._api_key}"}
         async with httpx.AsyncClient(timeout=self._timeout) as client:
-            resp = await client.post(
+            data = await post_json_with_retry(
+                client,
                 f"{self.base_url}/chat/completions",
                 json=payload,
                 headers=headers,
             )
-            resp.raise_for_status()
-            data = resp.json()
         return data["choices"][0]["message"]["content"]

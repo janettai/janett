@@ -31,10 +31,16 @@ async def process_pull_request(
     try:
         diff = await client.get_pr_diff(owner, repo, number)
         files = parse_diff(diff)
-        paths = changed_paths(files)[: settings.max_files]
-        file_contents = await client.get_file_contents(
-            owner, repo, paths, ref=head_sha, max_bytes=settings.max_file_bytes
-        )
+        # The orchestrator is the single authority on the too-many-files
+        # guardrail: it declines the review when there are more than max_files.
+        # Skip the (potentially large) content fetch when we know it will.
+        if len(files) > settings.max_files:
+            file_contents: dict[str, str] = {}
+        else:
+            file_contents = await client.get_file_contents(
+                owner, repo, changed_paths(files),
+                ref=head_sha, max_bytes=settings.max_file_bytes,
+            )
 
         request = ReviewRequest(
             diff=diff,

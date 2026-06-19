@@ -9,6 +9,8 @@ from __future__ import annotations
 
 import httpx
 
+from ._http import post_json_with_retry
+
 
 class OllamaClient:
     def __init__(
@@ -38,7 +40,7 @@ class OllamaClient:
             payload["format"] = schema
 
         async with httpx.AsyncClient(timeout=self._timeout) as client:
-            resp = await client.post(f"{self.base_url}/api/chat", json=payload)
-            resp.raise_for_status()
-            data = resp.json()
+            data = await post_json_with_retry(
+                client, f"{self.base_url}/api/chat", json=payload
+            )
         return data.get("message", {}).get("content", "")

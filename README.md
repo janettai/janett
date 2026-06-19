@@ -1,6 +1,6 @@
 # Janett
 
-[![CI](https://github.com/naamanu/janett/actions/workflows/ci.yml/badge.svg)](https://github.com/naamanu/janett/actions/workflows/ci.yml)
+[![CI](https://github.com/janettai/janett/actions/workflows/ci.yml/badge.svg)](https://github.com/janettai/janett/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 A Greptile-like AI code review bot. One transport-agnostic review engine, two

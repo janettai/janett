@@ -99,3 +99,65 @@ def test_no_newline_marker_does_not_shift_line_numbers():
     # "second" (new line 2) and "third" (new line 3) are added; the marker
     # must not bump the counter, which would wrongly yield {3, 4}.
     assert added == {2, 3}
+
+
+# --- rename, deleted, and binary handling ----------------------------------
+
+RENAME = """\
+diff --git a/old/name.py b/new/name.py
+similarity index 92%
+rename from old/name.py
+rename to new/name.py
+@@ -1,2 +1,2 @@
+ import os
+-old = 1
++new = 1
+"""
+
+
+def test_rename_records_both_paths():
+    files = parse_diff(RENAME)
+    assert len(files) == 1
+    f = files[0]
+    assert f.is_rename is True
+    assert f.old_path == "old/name.py"
+    assert f.new_path == "new/name.py"
+    assert f.path == "new/name.py"
+
+
+DELETED_AND_BINARY = """\
+diff --git a/gone.py b/gone.py
+deleted file mode 100644
+index 1234567..0000000
+--- a/gone.py
++++ /dev/null
+@@ -1,2 +0,0 @@
+-a
+-b
+diff --git a/logo.png b/logo.png
+index 1111111..2222222 100644
+Binary files a/logo.png and b/logo.png differ
+diff --git a/keep.py b/keep.py
+--- a/keep.py
++++ b/keep.py
+@@ -1,1 +1,2 @@
+ import os
++x = 1
+"""
+
+
+def test_changed_paths_skips_deleted_and_binary():
+    files = parse_diff(DELETED_AND_BINARY)
+    assert {f.path for f in files} == {"gone.py", "logo.png", "keep.py"}
+    by_path = {f.path: f for f in files}
+    assert by_path["gone.py"].is_deleted is True
+    assert by_path["logo.png"].is_binary is True
+    # Only the ordinary modified file is worth fetching content for.
+    assert changed_paths(files) == ["keep.py"]
+
+
+def test_removed_line_numbers_for_deletion():
+    files = parse_diff(DELETED_AND_BINARY)
+    gone = next(f for f in files if f.path == "gone.py")
+    assert gone.removed_line_numbers() == {1, 2}
+    assert gone.added_line_numbers() == set()

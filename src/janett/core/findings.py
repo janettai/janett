@@ -131,27 +131,35 @@ def _filter_to_diff(findings: list[Finding], files: list[FileDiff]) -> list[Find
     avoid discarding correct findings whose line number is off by one or two,
     near-misses are snapped to the closest changed line.
     """
+    # A RIGHT-side comment anchors to an added line (new-file numbering); a
+    # LEFT-side comment anchors to a removed line (old-file numbering).
     added_by_path: dict[str, set[int]] = {
         f.path: f.added_line_numbers() for f in files
+    }
+    removed_by_path: dict[str, set[int]] = {
+        f.path: f.removed_line_numbers() for f in files
     }
     kept: list[Finding] = []
     for f in findings:
         if not f.message.strip():
             continue
-        added = added_by_path.get(f.path)
-        if added is None:
+        changed_by_path = removed_by_path if f.side == Side.left else added_by_path
+        changed = changed_by_path.get(f.path)
+        if changed is None:
             # Try a basename match — models sometimes drop directory prefixes.
             # Require a path-segment boundary so "app.py" can't match "myapp.py".
-            matches = [p for p in added_by_path if p == f.path or p.endswith("/" + f.path)]
+            matches = [
+                p for p in changed_by_path if p == f.path or p.endswith("/" + f.path)
+            ]
             if len(matches) == 1:
                 f.path = matches[0]
-                added = added_by_path[matches[0]]
-        if not added:
+                changed = changed_by_path[matches[0]]
+        if not changed:
             continue
-        if f.line in added:
+        if f.line in changed:
             kept.append(f)
             continue
-        nearest = min(added, key=lambda ln: abs(ln - f.line))
+        nearest = min(changed, key=lambda ln: abs(ln - f.line))
         if abs(nearest - f.line) <= _LINE_SNAP_TOLERANCE:
             f.line = nearest
             kept.append(f)

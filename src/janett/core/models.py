@@ -68,6 +68,26 @@ class FileDiff(BaseModel):
                     line_no += 1
         return result
 
+    def removed_line_numbers(self) -> set[int]:
+        """Line numbers (in the old file) that this diff removes or modifies.
+
+        These are the valid anchor lines for a LEFT-side (pre-change) comment.
+        """
+        result: set[int] = set()
+        for hunk in self.hunks:
+            line_no = hunk.old_start
+            for raw in hunk.lines:
+                if raw.startswith("\\"):
+                    continue  # "\ No newline at end of file" marker
+                if raw.startswith("-"):
+                    result.add(line_no)
+                    line_no += 1
+                elif raw.startswith("+"):
+                    continue
+                else:  # context line
+                    line_no += 1
+        return result
+
 
 class Finding(BaseModel):
     """One review comment produced by the model."""

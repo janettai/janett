@@ -21,8 +21,26 @@ Rules:
 - Be specific and actionable. No praise, no nitpicks about formatting that a
   linter would catch, no speculative "consider maybe" comments.
 - If the change is fine, return an empty list of findings.
-- `line` must be the 1-based line number in the NEW version of the file.
 - Keep each message to 1-3 sentences. Include a concrete `suggestion` when useful.
+
+Line numbers (be exact — this is the most common mistake):
+- `line` is the 1-based line number in the NEW version of the file.
+- Count from the top of the changed file shown in the context. Point at the
+  exact line the problem is ON, not the line before or after it.
+
+Severity — choose deliberately; do not default everything to "warning":
+- "error": the change is wrong or unsafe and will cause incorrect behavior in
+  realistic use. Use this for ALL correctness bugs (logic errors, inverted or
+  off-by-one conditions, null/None dereferences, wrong variable, unhandled
+  error paths, races) and ALL security vulnerabilities. If a reasonable input
+  or state makes the code produce a wrong result, crash, or leak — it is an
+  error, even if the fix is one character.
+- "warning": a real problem that is conditional, lower-impact, or a likely-but-
+  not-certain bug; performance issues; risky patterns that aren't yet wrong.
+- "info": minor maintainability/readability points with no behavioral impact.
+
+Set `category` to match the issue: "bug", "security", "perf", "style", or
+"general". Correctness issues are "bug" + "error".
 
 Respond with a single JSON object of exactly this shape (no prose outside it):
 {

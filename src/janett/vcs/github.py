@@ -8,6 +8,7 @@ installation access token, which is then used for repo calls.
 from __future__ import annotations
 
 import asyncio
+import logging
 import time
 
 import httpx
@@ -15,6 +16,8 @@ import jwt
 
 from ..config import Settings
 from ..core.models import Finding, ReviewResult, Severity
+
+log = logging.getLogger("janett.github")
 
 _API = "https://api.github.com"
 _DIFF_ACCEPT = "application/vnd.github.v3.diff"
@@ -111,13 +114,25 @@ class GitHubClient:
             "event": "COMMENT",
             "comments": comments,
         }
+        url = f"{_API}/repos/{owner}/{repo}/pulls/{number}/reviews"
         async with httpx.AsyncClient(timeout=60) as client:
             headers = await self._auth_headers(client, _JSON_ACCEPT)
-            resp = await client.post(
-                f"{_API}/repos/{owner}/{repo}/pulls/{number}/reviews",
-                headers=headers,
-                json=payload,
-            )
+            resp = await client.post(url, headers=headers, json=payload)
+            if resp.status_code == 422 and comments:
+                # GitHub rejects the whole review if any inline comment targets a
+                # line it considers outside the diff. Rather than lose the review
+                # entirely, retry with the findings folded into the summary body.
+                log.warning(
+                    "Inline review rejected (422) for %s/%s#%s; "
+                    "posting summary-only fallback",
+                    owner, repo, number,
+                )
+                fallback = {
+                    "commit_id": commit_sha,
+                    "event": "COMMENT",
+                    "body": _fallback_body(result),
+                }
+                resp = await client.post(url, headers=headers, json=fallback)
             resp.raise_for_status()
 
 
@@ -142,3 +157,25 @@ def _review_body(result: ReviewResult) -> str:
     if n == 0:
         return f"{head}\n\n✅ No issues found."
     return f"{head}\n\n🔎 {n} finding(s) below."
+
+
+def _fallback_body(result: ReviewResult) -> str:
+    """A single review body that inlines every finding as text.
+
+    Used when GitHub rejects the inline-comment review (422) so the findings are
+    still delivered, just in the summary instead of anchored to lines.
+    """
+    head = result.summary or "Janett review complete."
+    lines = [
+        head,
+        "",
+        "⚠️ Couldn't anchor comments to the diff, so the findings are listed here:",
+        "",
+    ]
+    for f in result.findings:
+        emoji = _SEVERITY_EMOJI.get(f.severity, "")
+        lines.append(
+            f"- {emoji} **{f.severity.value}** `{f.path}:{f.line}` "
+            f"({f.category}): {f.message}"
+        )
+    return "\n".join(lines)

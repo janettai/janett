@@ -85,3 +85,32 @@ def test_basename_match_does_not_match_partial_segment():
 def test_unparseable_output_is_safe():
     result = parse_review_output("the model rambled with no json", _files())
     assert result.findings == []
+
+
+# --- LEFT-side findings anchor to removed lines, not added ones -------------
+
+# Removes `x = 1 / 0` (old line 2); adds nothing. So the only valid LEFT anchor
+# is old-file line 2, and there are no valid RIGHT anchors.
+DIFF_REMOVAL = """\
+diff --git a/a.py b/a.py
+--- a/a.py
++++ b/a.py
+@@ -1,3 +1,2 @@
+ import os
+-x = 1 / 0
+ y = 2
+"""
+
+
+def test_left_side_finding_anchors_to_removed_line():
+    raw = '{"findings": [{"path": "a.py", "line": 2, "side": "LEFT", "message": "removed buggy line"}]}'
+    result = parse_review_output(raw, parse_diff(DIFF_REMOVAL))
+    assert len(result.findings) == 1
+    assert result.findings[0].line == 2
+
+
+def test_right_side_finding_on_pure_removal_is_dropped():
+    # No added lines exist, so a RIGHT-side comment has nothing to anchor to.
+    raw = '{"findings": [{"path": "a.py", "line": 2, "side": "RIGHT", "message": "x"}]}'
+    result = parse_review_output(raw, parse_diff(DIFF_REMOVAL))
+    assert result.findings == []

@@ -37,11 +37,20 @@ def test_strips_code_fences():
     assert len(result.findings) == 1
 
 
-def test_drops_findings_outside_diff():
-    # line 1 is a context line (not added) -> dropped.
-    raw = '{"findings": [{"path": "src/app.py", "line": 1, "message": "nope"}]}'
+def test_drops_findings_far_from_diff():
+    # line 99 is far from any changed line (added lines are {2, 3}) -> dropped.
+    raw = '{"findings": [{"path": "src/app.py", "line": 99, "message": "nope"}]}'
     result = parse_review_output(raw, _files())
     assert result.findings == []
+
+
+def test_snaps_near_miss_line_to_nearest_changed_line():
+    # Model is off by one: reports line 4, real changed lines are {2, 3}.
+    # Should snap to the nearest changed line (3) rather than being dropped.
+    raw = '{"findings": [{"path": "src/app.py", "line": 4, "message": "off by one"}]}'
+    result = parse_review_output(raw, _files())
+    assert len(result.findings) == 1
+    assert result.findings[0].line == 3
 
 
 def test_bare_array_accepted():

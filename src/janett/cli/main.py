@@ -27,6 +27,15 @@ app = typer.Typer(add_completion=False, help="Janett — AI code review bot")
 console = Console()
 
 
+@app.callback()
+def _root() -> None:
+    """Janett — AI code review bot.
+
+    The callback keeps `review` a named subcommand (Typer otherwise collapses a
+    single-command app into the root, breaking the documented `janett review`).
+    """
+
+
 def _review_remote(request: ReviewRequest, remote: str) -> ReviewResult:
     url = remote.rstrip("/") + "/review"
     resp = httpx.post(url, json=request.model_dump(mode="json"), timeout=600)

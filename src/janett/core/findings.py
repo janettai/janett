@@ -117,11 +117,19 @@ def _coerce_side(value: object) -> Side:
         return Side.right
 
 
+# Models routinely miscount diff line numbers by one or two. Snap a finding to
+# the nearest actually-changed line within this window rather than dropping it
+# (anything farther is treated as a hallucination on unchanged code).
+_LINE_SNAP_TOLERANCE = 2
+
+
 def _filter_to_diff(findings: list[Finding], files: list[FileDiff]) -> list[Finding]:
-    """Keep only findings that reference a line actually changed by the diff.
+    """Keep findings that reference (or nearly reference) a changed line.
 
     This is the key guardrail against the model hallucinating comments on
-    unchanged code (and GitHub rejects comments on lines outside the diff).
+    unchanged code (and GitHub rejects comments on lines outside the diff). To
+    avoid discarding correct findings whose line number is off by one or two,
+    near-misses are snapped to the closest changed line.
     """
     added_by_path: dict[str, set[int]] = {
         f.path: f.added_line_numbers() for f in files
@@ -138,6 +146,13 @@ def _filter_to_diff(findings: list[Finding], files: list[FileDiff]) -> list[Find
             if len(matches) == 1:
                 f.path = matches[0]
                 added = added_by_path[matches[0]]
-        if added and f.line in added:
+        if not added:
+            continue
+        if f.line in added:
+            kept.append(f)
+            continue
+        nearest = min(added, key=lambda ln: abs(ln - f.line))
+        if abs(nearest - f.line) <= _LINE_SNAP_TOLERANCE:
+            f.line = nearest
             kept.append(f)
     return kept

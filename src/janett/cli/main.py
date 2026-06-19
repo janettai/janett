@@ -51,7 +51,7 @@ async def _review_local(request: ReviewRequest) -> ReviewResult:
 
 @app.command()
 def review(
-    base: str = typer.Option(None, "--base", "-b", help="Base ref (e.g. main); reviews base..head"),
+    base: str = typer.Option(None, "--base", "-b", help="Base ref (e.g. main); reviews base...head"),
     head: str = typer.Option("HEAD", "--head", "-h", help="Head ref"),
     staged: bool = typer.Option(False, "--staged", help="Review staged changes"),
     repo: Path = typer.Option(Path.cwd(), "--repo", help="Path to the git repo"),

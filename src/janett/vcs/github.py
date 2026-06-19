@@ -7,6 +7,7 @@ installation access token, which is then used for repo calls.
 
 from __future__ import annotations
 
+import asyncio
 import time
 
 import httpx
@@ -69,22 +70,27 @@ class GitHubClient:
         self, owner: str, repo: str, paths: list[str], ref: str, max_bytes: int
     ) -> dict[str, str]:
         contents: dict[str, str] = {}
+        # Bound concurrency so a large PR doesn't fire dozens of requests at once.
+        semaphore = asyncio.Semaphore(8)
+
         async with httpx.AsyncClient(timeout=60) as client:
             headers = await self._auth_headers(client, "application/vnd.github.raw")
-            for path in paths:
-                resp = await client.get(
-                    f"{_API}/repos/{owner}/{repo}/contents/{path}",
-                    headers=headers,
-                    params={"ref": ref},
-                )
-                if resp.status_code != 200:
-                    continue
-                if len(resp.content) > max_bytes:
-                    continue
+
+            async def fetch(path: str) -> None:
+                async with semaphore:
+                    resp = await client.get(
+                        f"{_API}/repos/{owner}/{repo}/contents/{path}",
+                        headers=headers,
+                        params={"ref": ref},
+                    )
+                if resp.status_code != 200 or len(resp.content) > max_bytes:
+                    return
                 try:
                     contents[path] = resp.content.decode("utf-8")
                 except UnicodeDecodeError:
-                    continue
+                    return
+
+            await asyncio.gather(*(fetch(p) for p in paths))
         return contents
 
     async def post_review(

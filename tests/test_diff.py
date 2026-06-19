@@ -52,3 +52,50 @@ def test_changed_paths_skips_nothing_reviewable():
 
 def test_empty_diff():
     assert parse_diff("") == []
+
+
+# --- regression: hunk body lines that look like file headers ---------------
+
+HEADER_LIKE_BODY = """\
+diff --git a/sig.txt b/sig.txt
+--- a/sig.txt
++++ b/sig.txt
+@@ -1,3 +1,3 @@
+ hello
+---
++++ world
+"""
+
+
+def test_body_lines_not_misparsed_as_headers():
+    # Deleting "-- " (email signature) yields a body line "--- "; adding
+    # "++ world" yields "+++ world". Neither should overwrite the file paths.
+    files = parse_diff(HEADER_LIKE_BODY)
+    assert len(files) == 1
+    assert files[0].path == "sig.txt"
+    assert files[0].old_path == "sig.txt"
+    # "++ world" is added at new line 2 (the "---" deletion doesn't advance it).
+    assert files[0].added_line_numbers() == {2}
+
+
+# --- regression: "\\ No newline at end of file" marker ---------------------
+
+NO_NEWLINE = """\
+diff --git a/a.txt b/a.txt
+--- a/a.txt
++++ b/a.txt
+@@ -1,2 +1,3 @@
+ first
+-second
+\\ No newline at end of file
++second
++third
+"""
+
+
+def test_no_newline_marker_does_not_shift_line_numbers():
+    files = parse_diff(NO_NEWLINE)
+    added = files[0].added_line_numbers()
+    # "second" (new line 2) and "third" (new line 3) are added; the marker
+    # must not bump the counter, which would wrongly yield {3, 4}.
+    assert added == {2, 3}

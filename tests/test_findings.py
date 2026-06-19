@@ -57,6 +57,22 @@ def test_basename_match_fixes_path():
     assert result.findings[0].path == "src/app.py"
 
 
+def test_basename_match_does_not_match_partial_segment():
+    # Model says "app.py" but the only changed file is "src/myapp.py" — the
+    # finding must NOT be attached to it (no path-segment boundary).
+    diff = (
+        "diff --git a/src/myapp.py b/src/myapp.py\n"
+        "--- a/src/myapp.py\n"
+        "+++ b/src/myapp.py\n"
+        "@@ -1,1 +1,2 @@\n"
+        " import os\n"
+        "+bad = 1\n"
+    )
+    raw = '{"findings": [{"path": "app.py", "line": 2, "message": "x"}]}'
+    result = parse_review_output(raw, parse_diff(diff))
+    assert result.findings == []
+
+
 def test_unparseable_output_is_safe():
     result = parse_review_output("the model rambled with no json", _files())
     assert result.findings == []

@@ -133,7 +133,8 @@ def _filter_to_diff(findings: list[Finding], files: list[FileDiff]) -> list[Find
         added = added_by_path.get(f.path)
         if added is None:
             # Try a basename match — models sometimes drop directory prefixes.
-            matches = [p for p in added_by_path if p.endswith("/" + f.path) or p.endswith(f.path)]
+            # Require a path-segment boundary so "app.py" can't match "myapp.py".
+            matches = [p for p in added_by_path if p == f.path or p.endswith("/" + f.path)]
             if len(matches) == 1:
                 f.path = matches[0]
                 added = added_by_path[matches[0]]

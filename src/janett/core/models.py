@@ -57,6 +57,8 @@ class FileDiff(BaseModel):
         for hunk in self.hunks:
             line_no = hunk.new_start
             for raw in hunk.lines:
+                if raw.startswith("\\"):
+                    continue  # "\ No newline at end of file" marker
                 if raw.startswith("+"):
                     result.add(line_no)
                     line_no += 1

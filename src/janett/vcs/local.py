@@ -38,7 +38,9 @@ def build_request_from_git(
     if staged:
         diff = _git(repo, "diff", "--cached", "--unified=3")
     elif base:
-        diff = _git(repo, "diff", f"{base}..{head}", "--unified=3")
+        # Three-dot: changes introduced on `head` since it diverged from `base`,
+        # not the raw tip-to-tip difference (which would include base-only commits).
+        diff = _git(repo, "diff", f"{base}...{head}", "--unified=3")
     else:
         diff = _git(repo, "diff", head, "--unified=3")
 

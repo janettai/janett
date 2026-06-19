@@ -67,10 +67,10 @@ def parse_diff(diff_text: str) -> list[FileDiff]:
             current.new_path = _strip_prefix(line[len("rename to ") :])
         elif line.startswith("Binary files") or line.startswith("GIT binary patch"):
             current.is_binary = True
-        elif line.startswith("--- "):
+        elif current_hunk is None and line.startswith("--- "):
             path = line[4:].strip()
             current.old_path = None if path == "/dev/null" else _strip_prefix(path)
-        elif line.startswith("+++ "):
+        elif current_hunk is None and line.startswith("+++ "):
             path = line[4:].strip()
             current.new_path = None if path == "/dev/null" else _strip_prefix(path)
         elif line.startswith("@@"):
